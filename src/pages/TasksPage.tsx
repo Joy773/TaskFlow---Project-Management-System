@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useAppSelector, useAppDispatch } from '@/store';
 import { addTask, updateTask, deleteTask } from '@/store/tasksSlice';
 import { addNotification } from '@/store/notificationsSlice';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,8 +9,14 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2, Pencil, User } from 'lucide-react';
+import { Plus, Trash2, Pencil, User, GripVertical } from 'lucide-react';
 import { Task, TaskStatus, Urgency } from '@/types';
+
+const columns: { key: TaskStatus; label: string; dotColor: string; btnColor: string }[] = [
+  { key: 'todo', label: 'To Do', dotColor: 'bg-primary', btnColor: 'bg-primary hover:bg-primary/90 text-primary-foreground' },
+  { key: 'in_progress', label: 'In Progress', dotColor: 'bg-urgency-medium', btnColor: 'bg-urgency-medium hover:bg-urgency-medium/90 text-primary-foreground' },
+  { key: 'done', label: 'Completed', dotColor: 'bg-urgency-low', btnColor: 'bg-urgency-low hover:bg-urgency-low/90 text-primary-foreground' },
+];
 
 export default function TasksPage() {
   const currentUser = useAppSelector(s => s.auth.currentUser);
@@ -23,18 +28,16 @@ export default function TasksPage() {
   const canDelete = currentUser?.role === 'admin';
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [createStatus, setCreateStatus] = useState<TaskStatus>('todo');
   const [editTask, setEditTask] = useState<Task | null>(null);
 
-  // Create form
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [urgency, setUrgency] = useState<Urgency>('medium');
   const [assigneeId, setAssigneeId] = useState('');
   const [status, setStatus] = useState<TaskStatus>('todo');
 
-  // Filter
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterUrgency, setFilterUrgency] = useState<string>('all');
+  const [draggedTask, setDraggedTask] = useState<Task | null>(null);
 
   const resetForm = () => { setTitle(''); setDescription(''); setUrgency('medium'); setAssigneeId(''); setStatus('todo'); };
 
@@ -42,7 +45,7 @@ export default function TasksPage() {
     e.preventDefault();
     const now = new Date().toISOString();
     const newTask: Task = {
-      id: 't' + Date.now(), title, description, status, urgency, assigneeId,
+      id: 't' + Date.now(), title, description, status: createStatus, urgency, assigneeId,
       createdBy: currentUser!.id, createdAt: now, updatedAt: now,
     };
     dispatch(addTask(newTask));
@@ -75,34 +78,28 @@ export default function TasksPage() {
     setUrgency(task.urgency); setAssigneeId(task.assigneeId); setStatus(task.status);
   };
 
-  const filteredTasks = tasks.filter(t => {
-    if (filterStatus !== 'all' && t.status !== filterStatus) return false;
-    if (filterUrgency !== 'all' && t.urgency !== filterUrgency) return false;
-    return true;
-  });
+  const openCreateForColumn = (colStatus: TaskStatus) => {
+    resetForm(); setCreateStatus(colStatus); setCreateOpen(true);
+  };
 
-  const getUrgencyClasses = (u: string) => {
+  const handleDrop = (targetStatus: TaskStatus) => {
+    if (!draggedTask || draggedTask.status === targetStatus) { setDraggedTask(null); return; }
+    if (currentUser?.role === 'employee' || currentUser?.role === 'admin' || currentUser?.role === 'team_leader') {
+      dispatch(updateTask({ ...draggedTask, status: targetStatus, updatedAt: new Date().toISOString() }));
+    }
+    setDraggedTask(null);
+  };
+
+  const getUrgencyLabel = (u: Urgency) => {
+    switch (u) { case 'high': return 'High Priority'; case 'medium': return 'Important'; case 'low': return 'OK'; }
+  };
+
+  const getUrgencyClasses = (u: Urgency) => {
     switch (u) {
       case 'high': return 'bg-urgency-high/15 text-urgency-high border-urgency-high/30';
       case 'medium': return 'bg-urgency-medium/15 text-urgency-medium border-urgency-medium/30';
       case 'low': return 'bg-urgency-low/15 text-urgency-low border-urgency-low/30';
-      default: return '';
     }
-  };
-
-  const getStatusClasses = (s: string) => {
-    switch (s) {
-      case 'todo': return 'bg-muted text-muted-foreground';
-      case 'in_progress': return 'bg-primary/15 text-primary';
-      case 'done': return 'bg-success/15 text-success';
-      default: return '';
-    }
-  };
-
-  const canEditTask = (task: Task) => {
-    if (currentUser?.role === 'admin' || currentUser?.role === 'team_leader') return true;
-    if (currentUser?.role === 'employee') return true; // employees can update task info
-    return false;
   };
 
   const TaskForm = ({ onSubmit, submitLabel }: { onSubmit: (e: React.FormEvent) => void; submitLabel: string }) => (
@@ -129,7 +126,7 @@ export default function TasksPage() {
         </div>
         <div className="space-y-2">
           <Label>Status</Label>
-          <Select value={status} onValueChange={v => setStatus(v as TaskStatus)}>
+          <Select value={editTask ? status : createStatus} onValueChange={v => editTask ? setStatus(v as TaskStatus) : setCreateStatus(v as TaskStatus)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="todo">To Do</SelectItem>
@@ -158,98 +155,111 @@ export default function TasksPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Tasks</h1>
-          <p className="text-muted-foreground mt-1">{tasks.length} total tasks</p>
-        </div>
-        {canCreate && (
-          <Dialog open={createOpen} onOpenChange={o => { setCreateOpen(o); if (!o) resetForm(); }}>
-            <DialogTrigger asChild>
-              <Button><Plus className="h-4 w-4 mr-2" />New Task</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader><DialogTitle>Create Task</DialogTitle></DialogHeader>
-              <TaskForm onSubmit={handleCreate} submitLabel="Create Task" />
-            </DialogContent>
-          </Dialog>
-        )}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Tasks</h1>
+        <p className="text-muted-foreground mt-1">Drag tasks between columns to update status</p>
       </div>
 
-      <div className="flex gap-3">
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-40"><SelectValue placeholder="Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="todo">To Do</SelectItem>
-            <SelectItem value="in_progress">In Progress</SelectItem>
-            <SelectItem value="done">Done</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={filterUrgency} onValueChange={setFilterUrgency}>
-          <SelectTrigger className="w-40"><SelectValue placeholder="Urgency" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Urgency</SelectItem>
-            <SelectItem value="high">High</SelectItem>
-            <SelectItem value="medium">Medium</SelectItem>
-            <SelectItem value="low">Low</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-3">
-        {filteredTasks.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">No tasks found</div>
-        )}
-        {filteredTasks.map(task => {
-          const assignee = users.find(u => u.id === task.assigneeId);
-          const creator = users.find(u => u.id === task.createdBy);
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {columns.map(col => {
+          const colTasks = tasks.filter(t => t.status === col.key);
           return (
-            <Card key={task.id} className="group">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-medium">{task.title}</h3>
-                      <Badge variant="outline" className={getUrgencyClasses(task.urgency)}>{task.urgency}</Badge>
-                      <Badge variant="outline" className={getStatusClasses(task.status)}>{task.status.replace('_', ' ')}</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground line-clamp-1">{task.description}</p>
-                    <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                      {assignee && (
-                        <span className="flex items-center gap-1"><User className="h-3 w-3" />{assignee.name}</span>
-                      )}
-                      <span>Created by {creator?.name}</span>
-                      <span>Updated {new Date(task.updatedAt).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {canEditTask(task) && (
-                      <Dialog open={editTask?.id === task.id} onOpenChange={o => { if (!o) { setEditTask(null); resetForm(); } }}>
-                        <DialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(task)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader><DialogTitle>Edit Task</DialogTitle></DialogHeader>
-                          <TaskForm onSubmit={handleUpdate} submitLabel="Update Task" />
-                        </DialogContent>
-                      </Dialog>
-                    )}
-                    {canDelete && (
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                        onClick={() => dispatch(deleteTask(task.id))}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
+            <div
+              key={col.key}
+              className="rounded-xl border border-border bg-card p-4 min-h-[400px] transition-colors"
+              onDragOver={e => e.preventDefault()}
+              onDrop={() => handleDrop(col.key)}
+            >
+              {/* Column Header */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <span className={`h-2.5 w-2.5 rounded-full ${col.dotColor}`} />
+                  <h2 className="font-bold text-lg">{col.label}</h2>
                 </div>
-              </CardContent>
-            </Card>
+                <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md font-medium">
+                  {colTasks.length} Total
+                </span>
+              </div>
+
+              {/* Add New Task Button */}
+              {canCreate && (
+                <Button
+                  className={`w-full mb-4 rounded-full font-medium ${col.btnColor}`}
+                  onClick={() => openCreateForColumn(col.key)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />Add New Task
+                </Button>
+              )}
+
+              {/* Task Cards */}
+              <div className="space-y-3">
+                {colTasks.map(task => {
+                  const assignee = users.find(u => u.id === task.assigneeId);
+                  return (
+                    <div
+                      key={task.id}
+                      draggable
+                      onDragStart={() => setDraggedTask(task)}
+                      className="group bg-background rounded-xl border border-border p-4 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <Badge variant="outline" className={`text-xs ${getUrgencyClasses(task.urgency)}`}>
+                          {getUrgencyLabel(task.urgency)}
+                        </Badge>
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Dialog open={editTask?.id === task.id} onOpenChange={o => { if (!o) { setEditTask(null); resetForm(); } }}>
+                            <DialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(task)}>
+                                <Pencil className="h-3.5 w-3.5" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader><DialogTitle>Edit Task</DialogTitle></DialogHeader>
+                              <TaskForm onSubmit={handleUpdate} submitLabel="Update Task" />
+                            </DialogContent>
+                          </Dialog>
+                          {canDelete && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={() => dispatch(deleteTask(task.id))}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
+                      <h3 className="font-medium mt-2 text-sm leading-snug">{task.title}</h3>
+                      {task.description && (
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{task.description}</p>
+                      )}
+
+                      <div className="flex items-center justify-between mt-3">
+                        {assignee ? (
+                          <div className="flex items-center gap-2">
+                            <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-semibold text-primary">
+                              {assignee.name.split(' ').map(n => n[0]).join('')}
+                            </div>
+                            <span className="text-xs text-muted-foreground">{assignee.name}</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">Unassigned</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
       </div>
+
+      {/* Create Dialog */}
+      <Dialog open={createOpen} onOpenChange={o => { setCreateOpen(o); if (!o) resetForm(); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Create Task</DialogTitle></DialogHeader>
+          <TaskForm onSubmit={handleCreate} submitLabel="Create Task" />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
