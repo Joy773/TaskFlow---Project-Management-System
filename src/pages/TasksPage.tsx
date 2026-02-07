@@ -9,8 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2, Pencil, User, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Pencil } from 'lucide-react';
 import { Task, TaskStatus, Urgency } from '@/types';
+import TaskForm from '@/components/TaskForm';
 
 const columns: { key: TaskStatus; label: string; dotColor: string; btnColor: string }[] = [
   { key: 'todo', label: 'To Do', dotColor: 'bg-primary', btnColor: 'bg-primary hover:bg-primary/90 text-primary-foreground' },
@@ -102,56 +103,11 @@ export default function TasksPage() {
     }
   };
 
-  const TaskForm = ({ onSubmit, submitLabel }: { onSubmit: (e: React.FormEvent) => void; submitLabel: string }) => (
-    <form onSubmit={onSubmit} className="space-y-4 mt-2">
-      <div className="space-y-2">
-        <Label>Title</Label>
-        <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Task title" required />
-      </div>
-      <div className="space-y-2">
-        <Label>Description</Label>
-        <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Task description" />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Urgency</Label>
-          <Select value={urgency} onValueChange={v => setUrgency(v as Urgency)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label>Status</Label>
-          <Select value={editTask ? status : createStatus} onValueChange={v => editTask ? setStatus(v as TaskStatus) : setCreateStatus(v as TaskStatus)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todo">To Do</SelectItem>
-              <SelectItem value="in_progress">In Progress</SelectItem>
-              <SelectItem value="done">Done</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      {(currentUser?.role === 'admin' || currentUser?.role === 'team_leader') && (
-        <div className="space-y-2">
-          <Label>Assign To</Label>
-          <Select value={assigneeId} onValueChange={setAssigneeId}>
-            <SelectTrigger><SelectValue placeholder="Select user" /></SelectTrigger>
-            <SelectContent>
-              {users.map(u => (
-                <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-      <Button type="submit" className="w-full">{submitLabel}</Button>
-    </form>
-  );
+  const canAssign = currentUser?.role === 'admin' || currentUser?.role === 'team_leader';
+  const formProps = {
+    title, setTitle, description, setDescription, urgency, setUrgency,
+    assigneeId, setAssigneeId, canAssign: !!canAssign, users,
+  };
 
   return (
     <div className="space-y-6">
@@ -215,7 +171,7 @@ export default function TasksPage() {
                             </DialogTrigger>
                             <DialogContent>
                               <DialogHeader><DialogTitle>Edit Task</DialogTitle></DialogHeader>
-                              <TaskForm onSubmit={handleUpdate} submitLabel="Update Task" />
+                              <TaskForm onSubmit={handleUpdate} submitLabel="Update Task" status={status} setStatus={setStatus} {...formProps} />
                             </DialogContent>
                           </Dialog>
                           {canDelete && (
@@ -257,7 +213,7 @@ export default function TasksPage() {
       <Dialog open={createOpen} onOpenChange={o => { setCreateOpen(o); if (!o) resetForm(); }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Create Task</DialogTitle></DialogHeader>
-          <TaskForm onSubmit={handleCreate} submitLabel="Create Task" />
+          <TaskForm onSubmit={handleCreate} submitLabel="Create Task" status={createStatus} setStatus={s => setCreateStatus(s)} {...formProps} />
         </DialogContent>
       </Dialog>
     </div>
