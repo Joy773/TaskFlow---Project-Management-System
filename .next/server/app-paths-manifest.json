@@ -1,7 +1,6 @@
 {
   "/login/page": "app/login/page.js",
-  "/(dashboard)/users/page": "app/(dashboard)/users/page.js",
-  "/(dashboard)/notifications/page": "app/(dashboard)/notifications/page.js",
-  "/(dashboard)/tasks/page": "app/(dashboard)/tasks/page.js",
-  "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js"
+  "/icon/[[...__metadata_id__]]/route": "app/icon/[[...__metadata_id__]]/route.js",
+  "/(dashboard)/dashboard/page": "app/(dashboard)/dashboard/page.js",
+  "/(dashboard)/users/page": "app/(dashboard)/users/page.js"
 }

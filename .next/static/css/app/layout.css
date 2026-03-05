@@ -1502,9 +1502,6 @@ video {
 .bg-sidebar-border {
   background-color: hsl(var(--sidebar-border));
 }
-.bg-sidebar-primary {
-  background-color: hsl(var(--sidebar-primary));
-}
 .bg-success {
   background-color: hsl(var(--success));
 }
@@ -1798,9 +1795,6 @@ video {
 }
 .text-sidebar-primary {
   color: hsl(var(--sidebar-primary));
-}
-.text-sidebar-primary-foreground {
-  color: hsl(var(--sidebar-primary-foreground));
 }
 .text-success {
   color: hsl(var(--success));
