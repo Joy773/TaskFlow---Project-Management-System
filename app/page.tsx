@@ -1,10 +1,7 @@
-'use client';
+import ClientHomeRedirect from './ClientHomeRedirect';
 
-import { useAppSelector } from '@/store';
-import { redirect } from 'next/navigation';
+export const dynamic = 'force-dynamic';
 
 export default function HomePage() {
-  const isAuthenticated = useAppSelector((s) => s.auth.isAuthenticated);
-  if (isAuthenticated) redirect('/dashboard');
-  redirect('/login');
+  return <ClientHomeRedirect />;
 }
