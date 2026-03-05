@@ -1,3 +1,4 @@
+'use client';
 import { useAppSelector, useAppDispatch } from '@/store';
 import { markAsRead, markAllAsRead } from '@/store/notificationsSlice';
 import { Card, CardContent } from '@/components/ui/card';

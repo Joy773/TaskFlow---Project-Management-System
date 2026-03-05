@@ -1,3 +1,4 @@
+'use client';
 import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { login } from '@/store/authSlice';
@@ -6,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ListTodo, AlertCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function Login() {
@@ -15,7 +16,10 @@ export default function Login() {
   const [error, setError] = useState('');
   const dispatch = useAppDispatch();
   const users = useAppSelector(s => s.users.users);
-  const navigate = useNavigate();
+  const router = useRouter();
+
+  const envEmail = process.env.NEXT_PUBLIC_EMAIL;
+  const envPassword = process.env.NEXT_PUBLIC_PASSWORD;
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,9 +29,16 @@ export default function Login() {
       setError('User not found. Try: sarah@company.com, marcus@company.com, or emily@company.com');
       return;
     }
-    // Frontend-only: any password works
+    // Env credentials: require exact password for NEXT_PUBLIC_EMAIL
+    if (envEmail && email === envEmail) {
+      if (password !== envPassword) {
+        setError('Invalid password for this account.');
+        return;
+      }
+    }
+    // Other demo accounts: any password works
     dispatch(login(user));
-    navigate('/dashboard');
+    router.push('/dashboard');
   };
 
   return (
@@ -53,20 +64,21 @@ export default function Login() {
             )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="sarah@company.com" value={email} onChange={e => setEmail(e.target.value)} required />
+              <Input id="email" type="email" placeholder="dibbojitdasjoy@gmail.com" value={email} onChange={e => setEmail(e.target.value)} required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" placeholder="Enter any password" value={password} onChange={e => setPassword(e.target.value)} required />
+              <Input id="password" type="password" placeholder="Your password" value={password} onChange={e => setPassword(e.target.value)} required />
             </div>
             <Button type="submit" className="w-full">Sign In</Button>
           </form>
           <div className="mt-6 p-3 rounded-lg bg-muted text-sm">
             <p className="font-medium text-foreground mb-2">Demo accounts:</p>
             <div className="space-y-1 text-muted-foreground">
-              <p><span className="font-medium">Admin:</span> sarah@company.com</p>
-              <p><span className="font-medium">Team Leader:</span> marcus@company.com</p>
-              <p><span className="font-medium">Employee:</span> emily@company.com</p>
+              <p><span className="font-medium">Your account:</span> dibbojitdasjoy@gmail.com (use .env password)</p>
+              <p><span className="font-medium">Admin:</span> sarah@company.com (any password)</p>
+              <p><span className="font-medium">Team Leader:</span> marcus@company.com (any password)</p>
+              <p><span className="font-medium">Employee:</span> emily@company.com (any password)</p>
             </div>
           </div>
         </CardContent>

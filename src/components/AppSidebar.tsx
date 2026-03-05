@@ -1,4 +1,7 @@
-import { NavLink as RouterNavLink, useLocation } from 'react-router-dom';
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Users, ListTodo, Bell, LogOut,
@@ -15,7 +18,7 @@ const navItems = [
 ];
 
 export function AppSidebar() {
-  const location = useLocation();
+  const pathname = usePathname();
   const dispatch = useAppDispatch();
   const currentUser = useAppSelector(s => s.auth.currentUser);
   const notifications = useAppSelector(s => s.notifications.notifications);
@@ -32,11 +35,11 @@ export function AppSidebar() {
 
       <nav className="flex-1 px-3 py-4 space-y-1">
         {navItems.map(item => {
-          const isActive = location.pathname === item.to;
+          const isActive = pathname === item.to;
           return (
-            <RouterNavLink
+            <Link
               key={item.to}
-              to={item.to}
+              href={item.to}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
                 isActive
@@ -51,7 +54,7 @@ export function AppSidebar() {
                   {unreadCount}
                 </span>
               )}
-            </RouterNavLink>
+            </Link>
           );
         })}
       </nav>

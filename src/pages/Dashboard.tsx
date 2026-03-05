@@ -1,3 +1,4 @@
+'use client';
 import { useAppSelector } from '@/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ListTodo, Users, AlertTriangle, CheckCircle2 } from 'lucide-react';

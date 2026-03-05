@@ -2,6 +2,7 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { User } from '@/types';
 
 const initialUsers: User[] = [
+  { id: '0', name: 'Dibbojit Das Joy', email: 'dibbojitdasjoy@gmail.com', role: 'admin' },
   { id: '1', name: 'Sarah Chen', email: 'sarah@company.com', role: 'admin' },
   { id: '2', name: 'Marcus Johnson', email: 'marcus@company.com', role: 'team_leader' },
   { id: '3', name: 'Emily Davis', email: 'emily@company.com', role: 'employee' },
